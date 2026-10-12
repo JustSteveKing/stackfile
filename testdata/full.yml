@@ -1,0 +1,55 @@
+stackfile: 1
+project: legacy-crm
+principles:
+  - Prefer boring, well-supported tech over novelty.
+layers:
+  backend:
+    - name: laravel
+      kind: framework
+      version: "^12.0"
+      ecosystem: composer
+      package: laravel/framework
+      status: adopt
+      basis: ratified
+      decided_by: [ADR-0003]
+      scope: ["app/**", "routes/**"]
+      rules:
+        - Controllers are invokable, one action per class.
+      commands:
+        test: php artisan test
+  data:
+    - name: postgres
+      kind: datastore
+      version: "17"
+      status: adopt
+      why: Relational data; JSONB covers the document cases.
+    - name: database-queue
+      kind: service
+      status: adopt
+    - name: redis
+      kind: datastore
+      ecosystem: composer
+      package: predis/predis
+      status: retired
+      replaced_by: database-queue
+      why: Queues and cache moved to Postgres.
+    - name: search
+      status: proposed
+      candidates: [meilisearch, typesense]
+      open: Do we need typo tolerance?
+  frontend:
+    - name: htmx
+      ecosystem: npm
+      package: htmx.org
+      status: trial
+      scope: ["resources/views/admin/**"]
+avoid:
+  - name: axios
+    ecosystem: npm
+    package: axios
+    use_instead: native fetch
+    why: One HTTP client is enough.
+    basis: ratified
+    decided_by: [ADR-0015]
+commands:
+  test: php artisan test

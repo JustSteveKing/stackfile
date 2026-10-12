@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=./schema/stackfile.schema.json
+#
+# stackfile's own stack, and the first stackfile anyone reads. Keep it honest:
+# 'make check' validates it and fails when AGENTS.md has drifted from it.
+stackfile: 1
+project: stackfile
+description: >-
+  A CLI and file format that tell people and coding agents what a project
+  builds with, how to use it, and what not to add.
+
+principles:
+  - One static binary; nothing to install before it runs, because hooks call it on every command.
+  - Prefer the standard library. A dependency has to save more than it costs to audit.
+  - The JSON Schema is the specification. Go types follow it, never the other way round.
+  - Every message an agent reads says what to do next, not only what is wrong.
+
+layers:
+  language:
+    - name: go
+      kind: language
+      version: "1.27"
+      status: adopt
+      why: Single static binary with fast start-up, and the language archdoc and legible are written in.
+      rules:
+        - Run gofmt; CI rejects unformatted files.
+        - Keep go.mod tidy; CI rejects drift.
+      commands:
+        test: go test -race ./...
+
+  cli:
+    - name: cobra
+      kind: library
+      version: "^1.10"
+      ecosystem: go
+      package: github.com/spf13/cobra
+      status: adopt
+      scope: ["cmd/**"]
+      rules:
+        - Commands return exitCode for a non-zero exit after writing output; never call os.Exit outside main.
+        - Long help states exit codes for any command a hook or CI will call.
+
+  format:
+    - name: yaml-v3
+      kind: library
+      version: "^3.0"
+      ecosystem: go
+      package: go.yaml.in/yaml/v3
+      status: adopt
+      why: Its Node API keeps line numbers for diagnostics and comments for future write-back.
+      rules:
+        - Read documents as yaml.Node first; decode into structs only after the schema passes.
+    - name: jsonschema
+      kind: library
+      version: "^6.0"
+      ecosystem: go
+      package: github.com/santhosh-tekuri/jsonschema/v6
+      status: adopt
+      why: Full draft 2020-12 support, including if/then and dependentRequired, which the schema relies on.
+      scope: ["schema/**", "stack/**"]
+
+  release:
+    - name: release-tooling
+      kind: tool
+      status: proposed
+      candidates: [goreleaser, go install only]
+      open: Ship binaries from v0.1 as legible does, or rely on go install until the format has settled?
+
+avoid:
+  - name: viper
+    ecosystem: go
+    package: github.com/spf13/viper
+    use_instead: flags read in each command
+    why: The only configuration is stackfile.yml itself, which has its own loader.
+  - name: doublestar
+    ecosystem: go
+    package: github.com/bmatcuk/doublestar/v4
+    use_instead: internal/glob
+    why: Scopes need path.Match plus **, which is forty lines.
+
+commands:
+  check: make check
+  build: make build
+  dogfood: go run ./cmd/stackfile validate --strict

@@ -1,0 +1,4 @@
+# LF everywhere, on every platform. Diagnostics carry line and column
+# numbers that the tests assert against fixtures, and the AGENTS.md block is
+# compared byte for byte by 'render --check'; a CRLF checkout breaks both.
+* text=auto eol=lf

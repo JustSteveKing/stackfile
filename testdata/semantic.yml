@@ -1,0 +1,19 @@
+stackfile: 1
+project: broken
+layers:
+  backend:
+    - name: laravel
+      version: "12.10"
+      status: adopt
+    - name: laravel
+      status: retired
+      replaced_by: symfony
+    - name: pg
+      status: adopt
+      basis: declared
+      decided_by: [ADR-1]
+      scope: ["/abs/**"]
+      candidates: [a]
+avoid:
+  - name: pg
+    why: duplicated

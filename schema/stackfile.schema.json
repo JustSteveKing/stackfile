@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/JustSteveKing/stackfile/main/schema/stackfile.schema.json",
+  "title": "stackfile",
+  "description": "What a project builds with, how to use it, what to avoid, and which decisions back each choice. Written for people and coding agents.",
+  "type": "object",
+  "required": ["stackfile", "project", "layers"],
+  "additionalProperties": false,
+  "patternProperties": {
+    "^x-": {}
+  },
+  "properties": {
+    "stackfile": {
+      "description": "Format version. Also how tools tell this file apart from other YAML.",
+      "const": 1
+    },
+    "project": {
+      "description": "The project's short name.",
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "description": "One or two sentences on what the project is.",
+      "type": "string"
+    },
+    "principles": {
+      "description": "Tie-breakers for any choice this file does not cover yet.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/rule" }
+    },
+    "layers": {
+      "description": "Entries grouped by layer. Layer names are free-form: backend, data, frontend, infra, testing, tooling.",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/identifier" },
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "$ref": "#/$defs/entry" }
+      }
+    },
+    "avoid": {
+      "description": "Things not to introduce at all, with what to use instead.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/avoid" }
+    },
+    "commands": { "$ref": "#/$defs/commands" }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "rule": {
+      "description": "One short imperative sentence. Anything longer belongs in a docs page.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "commands": {
+      "description": "Named shell commands: test, lint, migrate, dev.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/identifier" },
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "ecosystem": {
+      "description": "The package manager that installs this, so it can be checked against a manifest.",
+      "enum": ["composer", "npm", "go", "pypi", "cargo", "rubygems", "maven", "nuget", "hex", "pub"]
+    },
+    "basis": {
+      "description": "declared: stated without a decision record yet. ratified: backed by the records in decided_by. Both are binding.",
+      "enum": ["declared", "ratified"],
+      "default": "declared"
+    },
+    "decided_by": {
+      "description": "Identifiers of the ADRs or RFCs that back this entry, such as ADR-0012.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "entry": {
+      "type": "object",
+      "required": ["name", "status"],
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "name": {
+          "description": "Unique across the whole file. Other entries refer to it by this name.",
+          "$ref": "#/$defs/identifier"
+        },
+        "kind": {
+          "enum": ["language", "runtime", "framework", "library", "datastore", "service", "tool", "platform"]
+        },
+        "version": {
+          "description": "A version constraint. Always a string: an unquoted 1.10 is the number 1.1.",
+          "type": "string",
+          "minLength": 1
+        },
+        "ecosystem": { "$ref": "#/$defs/ecosystem" },
+        "package": {
+          "description": "The package's name in its ecosystem, such as laravel/framework.",
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "description": "adopt: the default choice. trial: allowed within its scope while being evaluated. proposed: not decided, see candidates. hold: no new uses. retired: being removed, see replaced_by.",
+          "enum": ["adopt", "trial", "proposed", "hold", "retired"]
+        },
+        "basis": { "$ref": "#/$defs/basis" },
+        "decided_by": { "$ref": "#/$defs/decided_by" },
+        "why": {
+          "description": "The reason in a sentence or two, until a decision record carries the full argument.",
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "description": "Path globs, relative to this file, where the entry applies. Absent means everywhere.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "rules": {
+          "description": "How to use it here.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/rule" }
+        },
+        "commands": { "$ref": "#/$defs/commands" },
+        "docs": {
+          "description": "Path or URL to the longer explanation.",
+          "type": "string",
+          "minLength": 1
+        },
+        "replaced_by": {
+          "description": "The name of the entry that replaces this one.",
+          "$ref": "#/$defs/identifier"
+        },
+        "candidates": {
+          "description": "The options still being considered while status is proposed.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "open": {
+          "description": "The question that has to be answered to decide.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "dependentRequired": {
+        "ecosystem": ["package"],
+        "package": ["ecosystem"]
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "retired" } }, "required": ["status"] },
+          "then": { "required": ["replaced_by"] }
+        },
+        {
+          "if": { "properties": { "status": { "const": "proposed" } }, "required": ["status"] },
+          "then": { "required": ["candidates"] }
+        },
+        { "$ref": "#/$defs/ratifiedHasRecords" }
+      ]
+    },
+    "avoid": {
+      "type": "object",
+      "required": ["name", "why"],
+      "additionalProperties": false,
+      "patternProperties": {
+        "^x-": {}
+      },
+      "properties": {
+        "name": { "$ref": "#/$defs/identifier" },
+        "ecosystem": { "$ref": "#/$defs/ecosystem" },
+        "package": { "type": "string", "minLength": 1 },
+        "use_instead": {
+          "description": "What to use in its place. An entry name, or plain words such as native fetch.",
+          "type": "string",
+          "minLength": 1
+        },
+        "why": { "type": "string", "minLength": 1 },
+        "basis": { "$ref": "#/$defs/basis" },
+        "decided_by": { "$ref": "#/$defs/decided_by" }
+      },
+      "dependentRequired": {
+        "ecosystem": ["package"],
+        "package": ["ecosystem"]
+      },
+      "allOf": [{ "$ref": "#/$defs/ratifiedHasRecords" }]
+    },
+    "ratifiedHasRecords": {
+      "if": { "properties": { "basis": { "const": "ratified" } }, "required": ["basis"] },
+      "then": {
+        "required": ["decided_by"],
+        "properties": { "decided_by": { "minItems": 1 } }
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+# Build output
+/bin/
+/dist/
+
+# Go
+*.test
+*.out
+coverage.out
