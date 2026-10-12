@@ -106,6 +106,7 @@ already does that.
 
 ```bash
 stackfile validate            # schema, then contradictions; errors exit 1, --strict for warnings too
+stackfile check               # compare with composer.lock, package-lock.json or bun.lock, and go.mod
 stackfile explain [path]      # what applies at a path: tools, rules, commands, what not to add
 stackfile can-i add <pkg>     # may this be added, and if not, what instead
 stackfile render              # write the stack summary into AGENTS.md between markers
@@ -116,6 +117,17 @@ stackfile schema              # print the JSON Schema
 Every command finds the nearest `stackfile.yml` from the current directory
 up, like git. `-f` points at one directly. `validate`, `explain` and
 `can-i add` take `--format json`.
+
+`check` reads the manifests and lockfiles next to the stackfile. It fails on
+a package from the avoid list that the project asks for directly, a
+candidate for an undecided entry that is already installed (something chose
+it without recording the decision), and an installed version outside the
+declared one. It warns on a retired entry still installed, an avoided
+package pulled in by something else (with the command that shows what), and
+an adopted entry that is not installed. `--undeclared` lists direct
+dependencies the stackfile does not mention, as notes. It reads composer,
+npm (`package-lock.json` v2 and v3, or `bun.lock`) and Go; any other
+ecosystem in the stackfile is reported as skipped.
 
 `can-i add` exits 0 when allowed, 1 when not, 2 when it could not answer, and
 3 when the stackfile says nothing either way, so a hook can block on 1 and
@@ -130,7 +142,7 @@ warn on 3.
 2. **`explain` and `can-i add`** are written to be read by agents. A refusal
    names the replacement, the reason and the decision, and tells the agent to
    stop and ask rather than install the nearest alternative.
-3. **CI** runs `validate` and `render --check` as the backstop.
+3. **CI** runs `validate`, `check` and `render --check` as the backstop.
 
 ## Install
 
@@ -140,9 +152,9 @@ go install github.com/JustSteveKing/stackfile/cmd/stackfile@latest
 
 ## Not yet
 
-- `stackfile check`: compare the stackfile with `composer.lock`,
-  `package-lock.json` and `go.mod`, catching anything on the avoid list that
-  is installed and anything undeclared.
+- `check` for pnpm, yarn, cargo, pypi and the other ecosystems the schema
+  names, language versions (`go` in go.mod, `php` in composer.json), and
+  SARIF output.
 - A Claude Code hooks pack: `can-i add` before install commands, `explain` at
   session start.
 - An MCP server, for agents other than Claude Code.

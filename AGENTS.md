@@ -23,11 +23,14 @@ Go 1.27. Dependencies are cobra, `go.yaml.in/yaml/v3` and
 ## Architecture
 
 ```
-schema/          the JSON Schema, embedded, and compiled once. The specification
-stack/           load, validate (YAML, schema, semantics), and the queries: ForPath, Lookup
-internal/glob    scope matching: path.Match per segment, plus **
-internal/render  everything an agent or person reads: explain, can-i answers, the AGENTS.md block
-cmd/stackfile    cobra: validate, explain, can-i add, render, schema
+schema/           the JSON Schema, embedded, and compiled once. The specification
+stack/            load, validate (YAML, schema, semantics), and the queries: ForPath, Lookup
+internal/deps     read manifests and lockfiles: composer, npm (package-lock, bun.lock), go.mod
+internal/version  does an installed version meet a declared constraint
+internal/check    compare a stackfile with what deps read
+internal/glob     scope matching: path.Match per segment, plus **
+internal/render   everything an agent or person reads: explain, can-i answers, check, the AGENTS.md block
+cmd/stackfile     cobra: validate, check, explain, can-i add, render, schema
 ```
 
 `schema` and `stack` are public so that other Go tools, archdoc first, can
@@ -78,6 +81,27 @@ broken file is worse off than one with none. Warnings do not stop anything.
 not every dependency; the lockfile already does that. So `can-i add` answers
 "undeclared" for anything else, and says so without blocking.
 
+**check reports disagreement, not taste.** Errors are where the stackfile and
+the project contradict each other: an avoided package asked for directly, an
+undecided candidate already installed, a version outside the declared one.
+Expected states are warnings: a retired package still installed, an avoided
+one pulled in by something else. Hold is never reported, because a lockfile
+cannot tell an old use from a new one. Undeclared is a note, and only with
+`--undeclared`.
+
+**A version check that cannot be done says so** (`internal/version`). The
+grammar covers ^, ~, comparisons, wildcards, prefixes and ||. Anything else,
+and any version that is not numbers (dev-main), is a "cannot check" warning,
+never a silent pass. `~1.2` is the one place composer and npm disagree
+(<2.0 against <1.3), so the ecosystem picks the reading.
+
+**A missing manifest is not an error.** Each reader returns nil when its
+manifest is absent, and check lists the ecosystem as skipped. A project
+specified before it is built, like tollhouse, checks clean.
+
+**Lockfile maps are walked in sorted order** (`sortedKeys`). With two nested
+copies of a package and no top-level one, the same copy must win every run.
+
 **The rendered block is stable.** No dates, no counts that change without the
 file changing. `render --check` compares bytes, and it is only useful if
 rendering twice gives the same file.
@@ -90,7 +114,11 @@ rendering twice gives the same file.
 - `testdata/semantic.yml`: passes the schema, fails semantics.
 - `testdata/basis.yml`: valid; a pending basis, `version_decided_by`, and
   proposals with one candidate and with none.
-- `stackfile.yml` at the root is ours, and must stay clean under `--strict`.
+- `internal/deps/testdata/`: one directory per manifest and lockfile shape.
+- `internal/check/testdata/project/`: composer, npm and Go together, with a
+  stackfile built to produce every kind of finding once.
+- `stackfile.yml` at the root is ours, and must stay clean under `--strict`,
+  for both `validate` and `check`.
 
 <!-- stackfile:start: generated from stackfile.yml by 'stackfile render'; edit that file, not this block -->
 ## Stack
@@ -99,6 +127,7 @@ rendering twice gives the same file.
 
 - Before working in a directory, run `stackfile explain <path>` for the rules that apply there.
 - Before adding any dependency, run `stackfile can-i add <package>` and follow what it says.
+- After changing dependencies, run `stackfile check` and fix what it reports.
 
 **Principles**, the tie-breakers for anything not covered:
 
@@ -122,6 +151,7 @@ rendering twice gives the same file.
 
 - viper: use flags read in each command instead. The only configuration is stackfile.yml itself, which has its own loader.
 - doublestar: use internal/glob instead. Scopes need path.Match plus **, which is forty lines.
+- semver: use internal/version instead. check needs one constraint grammar per ecosystem, and composer's ~ differs from semver's.
 
 **Commands**
 

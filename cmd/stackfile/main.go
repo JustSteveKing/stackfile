@@ -77,6 +77,6 @@ way git finds its repository. Use --file to point at one directly.`,
 		SilenceErrors: true,
 	}
 	root.PersistentFlags().StringP("file", "f", "", "path to stackfile.yml (default: the nearest one)")
-	root.AddCommand(newValidateCmd(), newExplainCmd(), newCanICmd(), newRenderCmd(), newSchemaCmd())
+	root.AddCommand(newValidateCmd(), newCheckCmd(), newExplainCmd(), newCanICmd(), newRenderCmd(), newSchemaCmd())
 	return root
 }

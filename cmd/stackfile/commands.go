@@ -11,6 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/JustSteveKing/stackfile/internal/check"
+	"github.com/JustSteveKing/stackfile/internal/deps"
 	"github.com/JustSteveKing/stackfile/internal/render"
 	"github.com/JustSteveKing/stackfile/schema"
 	"github.com/JustSteveKing/stackfile/stack"
@@ -305,6 +307,62 @@ the block is out of date.`,
 	cmd.Flags().String("target", "AGENTS.md", "file to write, relative to the stackfile")
 	cmd.Flags().Bool("check", false, "change nothing; exit 1 if the block is out of date")
 	cmd.Flags().Bool("stdout", false, "print the block instead of writing it")
+	return cmd
+}
+
+func newCheckCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "check",
+		Short: "Compare the stackfile with what the project installs",
+		Long: `check reads the manifests and lockfiles next to stackfile.yml and reports
+where they and the stackfile disagree:
+
+  error    a package on the avoid list is a direct dependency
+  error    a candidate for an undecided entry is already a direct dependency
+  error    an installed version does not satisfy the declared one
+  warning  a retired entry is still a direct dependency
+  warning  a package on the avoid list comes in through another package
+  warning  an adopted entry is not installed
+  note     a direct dependency the stackfile does not mention (--undeclared)
+
+Read: composer.json and composer.lock; package.json with package-lock.json
+or bun.lock; go.mod. An ecosystem with no manifest is skipped.
+
+Errors exit 1. Warnings do not, unless --strict is given. Notes never do.`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			out, err := format(cmd)
+			if err != nil {
+				return err
+			}
+			f, err := load(cmd)
+			if err != nil {
+				return err
+			}
+			invs, err := deps.Read(f.Dir)
+			if err != nil {
+				return err
+			}
+			undeclared, _ := cmd.Flags().GetBool("undeclared")
+			res := check.Run(f, invs, check.Options{Undeclared: undeclared})
+
+			if out == "json" {
+				if err := writeJSON(cmd.OutOrStdout(), res); err != nil {
+					return err
+				}
+			} else {
+				render.Check(cmd.OutOrStdout(), displayPath(f.Path), res)
+			}
+			strict, _ := cmd.Flags().GetBool("strict")
+			if res.Count(check.SeverityError) > 0 || (strict && res.Count(check.SeverityWarning) > 0) {
+				return exitCode(exitGate)
+			}
+			return nil
+		},
+	}
+	cmd.Flags().Bool("strict", false, "treat warnings as errors")
+	cmd.Flags().Bool("undeclared", false, "list direct dependencies the stackfile does not mention")
+	formatFlag(cmd)
 	return cmd
 }
 

@@ -136,3 +136,38 @@ func TestExplainOutsideProject(t *testing.T) {
 		t.Errorf("exit %d\n%s", code, out)
 	}
 }
+
+func TestCheckExitCodes(t *testing.T) {
+	fixture := "../../internal/check/testdata/project/stackfile.yml"
+	if out, code := run(t, "-f", fixture, "check"); code != exitGate || !strings.Contains(out, "2 error(s), 6 warning(s), 0 note(s)") {
+		t.Errorf("fixture: exit %d\n%s", code, out)
+	}
+	out, code := run(t, "-f", fixture, "check", "--format", "json", "--undeclared")
+	if code != exitGate {
+		t.Errorf("json: exit %d", code)
+	}
+	var res struct {
+		Findings []struct{ Severity string }  `json:"findings"`
+		Skipped  []struct{ Ecosystem string } `json:"skipped"`
+	}
+	if err := json.Unmarshal([]byte(out), &res); err != nil || len(res.Findings) != 9 || len(res.Skipped) != 1 {
+		t.Errorf("json: %v, %d findings, %d skipped\n%s", err, len(res.Findings), len(res.Skipped), out)
+	}
+
+	// Warnings alone pass, unless --strict.
+	dir := t.TempDir()
+	sf := filepath.Join(dir, "stackfile.yml")
+	yaml := "stackfile: 1\nproject: x\nlayers:\n  a:\n    - name: vue\n      ecosystem: npm\n      package: vue\n      status: adopt\n"
+	if err := os.WriteFile(sf, []byte(yaml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"dependencies": {}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, code := run(t, "-f", sf, "check"); code != exitOK {
+		t.Errorf("warning only: exit %d, want 0", code)
+	}
+	if _, code := run(t, "-f", sf, "check", "--strict"); code != exitGate {
+		t.Errorf("warning with --strict: exit %d, want 1", code)
+	}
+}

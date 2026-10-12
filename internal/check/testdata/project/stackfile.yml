@@ -1,0 +1,59 @@
+stackfile: 1
+project: check-fixture
+layers:
+  backend:
+    - name: laravel
+      version: "^13.0"
+      ecosystem: composer
+      package: laravel/framework
+      status: adopt
+    - name: phpunit
+      version: "^11.0"
+      ecosystem: composer
+      package: phpunit/phpunit
+      status: adopt
+    - name: huma
+      version: "^2.30"
+      ecosystem: go
+      package: github.com/danielgtaylor/huma/v2/adapters/humachi
+      status: adopt
+    - name: pgx
+      ecosystem: go
+      package: github.com/jackc/pgx/v5
+      status: adopt
+    - name: cobra
+      ecosystem: go
+      package: github.com/spf13/cobra
+      status: retired
+      replaced_by: huma
+    - name: queue
+      status: proposed
+      candidates: [vitest, riverqueue]
+    - name: weird
+      version: "1.0 - 2.0"
+      ecosystem: npm
+      package: react
+      status: adopt
+  frontend:
+    - name: vue
+      ecosystem: npm
+      package: vue
+      status: adopt
+    - name: crate
+      ecosystem: cargo
+      package: serde
+      status: adopt
+avoid:
+  - name: axios
+    ecosystem: npm
+    package: axios
+    use_instead: native fetch
+    why: One HTTP client.
+  - name: guzzle
+    ecosystem: composer
+    package: guzzlehttp/guzzle
+    why: Use the framework's client.
+  - name: left-pad
+    ecosystem: npm
+    package: left-pad
+    why: Nobody needs it.

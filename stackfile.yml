@@ -76,6 +76,11 @@ avoid:
     package: github.com/bmatcuk/doublestar/v4
     use_instead: internal/glob
     why: Scopes need path.Match plus **, which is forty lines.
+  - name: semver
+    ecosystem: go
+    package: github.com/Masterminds/semver/v3
+    use_instead: internal/version
+    why: check needs one constraint grammar per ecosystem, and composer's ~ differs from semver's.
 
 commands:
   check: make check

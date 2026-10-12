@@ -34,6 +34,7 @@ func Agents(f *stack.File) string {
 	line("")
 	line("- Before working in a directory, run `stackfile explain <path>` for the rules that apply there.")
 	line("- Before adding any dependency, run `stackfile can-i add <package>` and follow what it says.")
+	line("- After changing dependencies, run `stackfile check` and fix what it reports.")
 
 	if len(f.Principles) > 0 {
 		line("")

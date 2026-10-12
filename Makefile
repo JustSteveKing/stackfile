@@ -63,8 +63,9 @@ test-race:
 # The tests already hold these, but running the binary the way a user would
 # is the check that the CLI and the tests have not drifted apart.
 .PHONY: dogfood
-dogfood: ## Validate our own stackfile and check AGENTS.md is current
+dogfood: ## Validate our own stackfile, check it against go.mod, and check AGENTS.md
 	$(GO) run $(PKG) validate --strict
+	$(GO) run $(PKG) check --strict
 	$(GO) run $(PKG) render --check
 
 .PHONY: render
