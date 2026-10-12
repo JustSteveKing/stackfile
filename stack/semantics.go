@@ -48,9 +48,7 @@ func checkSemantics(f *File, root *yaml.Node) Diagnostics {
 				}
 			}
 
-			if len(e.DecidedBy) > 0 && e.Basis == BasisDeclared {
-				at(SeverityWarning, append(p, "decided_by"), "has decided_by but basis is declared; set basis: ratified")
-			}
+			basisAgrees(at, p, e.Basis, e.DecidedBy, e.PendingOn)
 			if e.Status != StatusProposed {
 				if len(e.Candidates) > 0 {
 					at(SeverityWarning, append(p, "candidates"), "candidates only apply while status is proposed; remove them now %s is %s", e.Name, e.Status)
@@ -94,10 +92,30 @@ func checkSemantics(f *File, root *yaml.Node) Diagnostics {
 				at(SeverityError, append(p, "package"), "%s package %s is both declared at %s and on the avoid list", a.Ecosystem, a.Package, where)
 			}
 		}
-		if len(a.DecidedBy) > 0 && a.Basis == BasisDeclared {
-			at(SeverityWarning, append(p, "decided_by"), "has decided_by but basis is declared; set basis: ratified")
-		}
+		basisAgrees(at, p, a.Basis, a.DecidedBy, a.PendingOn)
 	}
 
 	return ds
+}
+
+// basisAgrees warns when the records listed say something other than the
+// basis does. The basis is what explain and render show, so a stale one
+// misstates how settled a choice is.
+func basisAgrees(at func(Severity, []string, string, ...any), p []string, basis string, decidedBy, pendingOn []string) {
+	if len(decidedBy) > 0 && basis != BasisRatified {
+		at(SeverityWarning, append(p, "decided_by"), "decided_by lists accepted records but basis is %s; set basis: ratified, or move them to pending_on if they are not accepted", basis)
+	}
+	if len(pendingOn) > 0 && basis == BasisDeclared {
+		at(SeverityWarning, append(p, "pending_on"), "has pending_on but basis is declared; set basis: pending")
+	}
+	if len(pendingOn) > 0 && basis == BasisRatified {
+		at(SeverityWarning, append(p, "pending_on"), "basis is ratified, so nothing is pending; remove pending_on, or set basis: pending if the record is not accepted")
+	}
+	for _, id := range pendingOn {
+		for _, d := range decidedBy {
+			if id == d {
+				at(SeverityError, append(p, "pending_on"), "%s is in both decided_by and pending_on; a record is either accepted or not", id)
+			}
+		}
+	}
 }

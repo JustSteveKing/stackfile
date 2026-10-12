@@ -72,14 +72,32 @@ runs the YAML language server.
 | --- | --- |
 | `adopt` | The default choice. |
 | `trial` | Allowed within its `scope` while it is evaluated. |
-| `proposed` | Not decided. `candidates` lists the options, `open` the question. Agents are told to ask, not choose. |
+| `proposed` | Not decided. `candidates` lists the options, `open` the question; either will do, and one candidate is fine. Agents are told to ask, not choose. |
 | `hold` | No new uses. Existing ones may stay. |
 | `retired` | Being removed. `replaced_by` names the entry to use instead. |
 
-`basis` is `declared` (the default: stated, no decision record yet) or
-`ratified` (backed by the ADRs or RFCs in `decided_by`). Both are binding.
-The difference shows which choices have been argued and which were made on
-instinct.
+`basis` says how far the decision behind an entry has got. All three are
+binding; the difference shows which choices have been argued and which
+were made on instinct.
+
+| Basis | Meaning | Needs |
+| --- | --- | --- |
+| `declared` | The default. Stated, with no decision record yet. | |
+| `pending` | Chosen in a record that is not accepted yet, such as a draft RFC. Agents follow it and are told it may change. | `pending_on` |
+| `ratified` | Backed by accepted ADRs or RFCs. | `decided_by` |
+
+The basis covers the choice of technology, not its version. A version is
+declared unless `version_decided_by` names the records that set it, so Go
+can be ratified while `version: "1.27"` is only stated:
+
+```yaml
+- name: jcs
+  version: ">= 1.0.2"
+  version_decided_by: [RFC-0003]   # the RFC sets the floor
+  status: adopt
+  basis: ratified
+  decided_by: [RFC-0003, ADR-0011]
+```
 
 A stackfile lists what carries a decision, not every dependency. The lockfile
 already does that.

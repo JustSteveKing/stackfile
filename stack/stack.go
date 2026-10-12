@@ -22,10 +22,15 @@ const (
 	StatusRetired  = "retired"
 )
 
-// Bases. Both are binding; the difference is whether a decision record
-// stands behind the entry yet.
+// Bases. All three are binding; the difference is how far the decision
+// behind the entry has got. A basis covers the choice of technology, not its
+// version, which has its own VersionDecidedBy.
 const (
+	// BasisDeclared: stated, with no decision record behind it yet.
 	BasisDeclared = "declared"
+	// BasisPending: chosen in a record that is not accepted yet.
+	BasisPending = "pending"
+	// BasisRatified: backed by accepted records.
 	BasisRatified = "ratified"
 )
 
@@ -59,22 +64,26 @@ type Layers []Layer
 // Entry is one technology the project uses, is trying, is deciding on, or is
 // moving off.
 type Entry struct {
-	Name       string   `yaml:"name" json:"name,omitempty"`
-	Kind       string   `yaml:"kind" json:"kind,omitempty"`
-	Version    string   `yaml:"version" json:"version,omitempty"`
-	Ecosystem  string   `yaml:"ecosystem" json:"ecosystem,omitempty"`
-	Package    string   `yaml:"package" json:"package,omitempty"`
-	Status     string   `yaml:"status" json:"status,omitempty"`
-	Basis      string   `yaml:"basis" json:"basis,omitempty"`
-	DecidedBy  []string `yaml:"decided_by" json:"decided_by,omitempty"`
-	Why        string   `yaml:"why" json:"why,omitempty"`
-	Scope      []string `yaml:"scope" json:"scope,omitempty"`
-	Rules      []string `yaml:"rules" json:"rules,omitempty"`
-	Commands   Commands `yaml:"commands" json:"commands,omitempty"`
-	Docs       string   `yaml:"docs" json:"docs,omitempty"`
-	ReplacedBy string   `yaml:"replaced_by" json:"replaced_by,omitempty"`
-	Candidates []string `yaml:"candidates" json:"candidates,omitempty"`
-	Open       string   `yaml:"open" json:"open,omitempty"`
+	Name    string `yaml:"name" json:"name,omitempty"`
+	Kind    string `yaml:"kind" json:"kind,omitempty"`
+	Version string `yaml:"version" json:"version,omitempty"`
+	// VersionDecidedBy names the records that set the version. Without it
+	// the version is declared, whatever Basis says about the choice.
+	VersionDecidedBy []string `yaml:"version_decided_by" json:"version_decided_by,omitempty"`
+	Ecosystem        string   `yaml:"ecosystem" json:"ecosystem,omitempty"`
+	Package          string   `yaml:"package" json:"package,omitempty"`
+	Status           string   `yaml:"status" json:"status,omitempty"`
+	Basis            string   `yaml:"basis" json:"basis,omitempty"`
+	DecidedBy        []string `yaml:"decided_by" json:"decided_by,omitempty"`
+	PendingOn        []string `yaml:"pending_on" json:"pending_on,omitempty"`
+	Why              string   `yaml:"why" json:"why,omitempty"`
+	Scope            []string `yaml:"scope" json:"scope,omitempty"`
+	Rules            []string `yaml:"rules" json:"rules,omitempty"`
+	Commands         Commands `yaml:"commands" json:"commands,omitempty"`
+	Docs             string   `yaml:"docs" json:"docs,omitempty"`
+	ReplacedBy       string   `yaml:"replaced_by" json:"replaced_by,omitempty"`
+	Candidates       []string `yaml:"candidates" json:"candidates,omitempty"`
+	Open             string   `yaml:"open" json:"open,omitempty"`
 
 	// Layer is the name of the layer the entry sits in, and Line where it
 	// starts in the file.
@@ -91,6 +100,7 @@ type Avoid struct {
 	Why        string   `yaml:"why" json:"why,omitempty"`
 	Basis      string   `yaml:"basis" json:"basis,omitempty"`
 	DecidedBy  []string `yaml:"decided_by" json:"decided_by,omitempty"`
+	PendingOn  []string `yaml:"pending_on" json:"pending_on,omitempty"`
 
 	Line int `yaml:"-" json:"line"`
 }

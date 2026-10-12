@@ -1,0 +1,39 @@
+stackfile: 1
+project: basis
+layers:
+  backend:
+    - name: go
+      version: "1.27"
+      status: adopt
+      basis: ratified
+      decided_by: [RFC-0001]
+    - name: jcs
+      version: ">= 1.0.2"
+      version_decided_by: [RFC-0003]
+      ecosystem: go
+      package: github.com/gowebpki/jcs
+      status: adopt
+      basis: ratified
+      decided_by: [RFC-0003]
+    - name: river
+      ecosystem: go
+      package: github.com/riverqueue/river
+      status: adopt
+      basis: pending
+      pending_on: [RFC-0005]
+      rules:
+        - Enqueue in the same transaction as the row.
+    - name: ulid
+      status: proposed
+      candidates: [github.com/oklog/ulid/v2]
+    - name: config
+      status: proposed
+      open: Which library reads the environment?
+avoid:
+  - name: asynq
+    ecosystem: go
+    package: github.com/hibiken/asynq
+    use_instead: river
+    why: A second datastore.
+    basis: pending
+    pending_on: [RFC-0005]

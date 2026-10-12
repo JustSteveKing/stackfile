@@ -79,7 +79,7 @@ func Agents(f *stack.File) string {
 		line("**Undecided.** Do not choose; ask the user:")
 		line("")
 		for _, e := range undecided {
-			item := fmt.Sprintf("%s: %s", e.Name, strings.Join(e.Candidates, " or "))
+			item := fmt.Sprintf("%s: %s", e.Name, candidates(e.Candidates))
 			if e.Open != "" {
 				item += ". " + e.Open
 			}
@@ -117,6 +117,9 @@ func entryItem(e stack.Entry) string {
 	s += " (" + e.Layer + ")"
 	if len(e.Scope) > 0 {
 		s += " in " + strings.Join(e.Scope, ", ")
+	}
+	if len(e.PendingOn) > 0 {
+		s += ", pending " + strings.Join(e.PendingOn, ", ")
 	}
 	return s
 }

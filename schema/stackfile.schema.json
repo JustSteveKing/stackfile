@@ -68,12 +68,18 @@
       "enum": ["composer", "npm", "go", "pypi", "cargo", "rubygems", "maven", "nuget", "hex", "pub"]
     },
     "basis": {
-      "description": "declared: stated without a decision record yet. ratified: backed by the records in decided_by. Both are binding.",
-      "enum": ["declared", "ratified"],
+      "description": "declared: stated, with no decision record behind it yet. pending: chosen in a record that is not accepted yet, named in pending_on. ratified: backed by the accepted records in decided_by. All three are binding. Basis covers the choice; a version is declared unless version_decided_by says otherwise.",
+      "enum": ["declared", "pending", "ratified"],
       "default": "declared"
     },
     "decided_by": {
-      "description": "Identifiers of the ADRs or RFCs that back this entry, such as ADR-0012.",
+      "description": "Identifiers of the accepted ADRs or RFCs that back this entry, such as ADR-0012.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "pending_on": {
+      "description": "Identifiers of the records, not yet accepted, that will decide this entry, such as a draft RFC-0005.",
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
       "uniqueItems": true
@@ -98,6 +104,10 @@
           "type": "string",
           "minLength": 1
         },
+        "version_decided_by": {
+          "description": "The accepted records that set the version, when they did. Without it the version is declared, whatever the entry's basis.",
+          "$ref": "#/$defs/decided_by"
+        },
         "ecosystem": { "$ref": "#/$defs/ecosystem" },
         "package": {
           "description": "The package's name in its ecosystem, such as laravel/framework.",
@@ -110,6 +120,7 @@
         },
         "basis": { "$ref": "#/$defs/basis" },
         "decided_by": { "$ref": "#/$defs/decided_by" },
+        "pending_on": { "$ref": "#/$defs/pending_on" },
         "why": {
           "description": "The reason in a sentence or two, until a decision record carries the full argument.",
           "type": "string",
@@ -137,7 +148,7 @@
           "$ref": "#/$defs/identifier"
         },
         "candidates": {
-          "description": "The options still being considered while status is proposed.",
+          "description": "The options being considered while status is proposed. One is fine; so is none, when open states the question.",
           "type": "array",
           "minItems": 1,
           "items": { "type": "string", "minLength": 1 }
@@ -150,7 +161,8 @@
       },
       "dependentRequired": {
         "ecosystem": ["package"],
-        "package": ["ecosystem"]
+        "package": ["ecosystem"],
+        "version_decided_by": ["version"]
       },
       "allOf": [
         {
@@ -159,9 +171,10 @@
         },
         {
           "if": { "properties": { "status": { "const": "proposed" } }, "required": ["status"] },
-          "then": { "required": ["candidates"] }
+          "then": { "anyOf": [{ "required": ["candidates"] }, { "required": ["open"] }] }
         },
-        { "$ref": "#/$defs/ratifiedHasRecords" }
+        { "$ref": "#/$defs/ratifiedHasRecords" },
+        { "$ref": "#/$defs/pendingHasRecords" }
       ]
     },
     "avoid": {
@@ -182,19 +195,27 @@
         },
         "why": { "type": "string", "minLength": 1 },
         "basis": { "$ref": "#/$defs/basis" },
-        "decided_by": { "$ref": "#/$defs/decided_by" }
+        "decided_by": { "$ref": "#/$defs/decided_by" },
+        "pending_on": { "$ref": "#/$defs/pending_on" }
       },
       "dependentRequired": {
         "ecosystem": ["package"],
         "package": ["ecosystem"]
       },
-      "allOf": [{ "$ref": "#/$defs/ratifiedHasRecords" }]
+      "allOf": [{ "$ref": "#/$defs/ratifiedHasRecords" }, { "$ref": "#/$defs/pendingHasRecords" }]
     },
     "ratifiedHasRecords": {
       "if": { "properties": { "basis": { "const": "ratified" } }, "required": ["basis"] },
       "then": {
         "required": ["decided_by"],
         "properties": { "decided_by": { "minItems": 1 } }
+      }
+    },
+    "pendingHasRecords": {
+      "if": { "properties": { "basis": { "const": "pending" } }, "required": ["basis"] },
+      "then": {
+        "required": ["pending_on"],
+        "properties": { "pending_on": { "minItems": 1 } }
       }
     }
   }

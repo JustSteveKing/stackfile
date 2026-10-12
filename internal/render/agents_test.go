@@ -89,3 +89,46 @@ func TestAgentsSections(t *testing.T) {
 		t.Error("block is not wrapped in its markers")
 	}
 }
+
+func TestPendingAndCandidatesWording(t *testing.T) {
+	f, ds, err := stack.Load("../../testdata/basis.yml")
+	if err != nil || f == nil || ds.HasErrors() {
+		t.Fatalf("basis.yml: %v %v", err, ds)
+	}
+	block := Agents(f)
+	var explain, answer strings.Builder
+	Explain(&explain, f, ".", true)
+	Answer(&answer, f.Lookup("github.com/riverqueue/river", ""))
+	var avoid strings.Builder
+	Answer(&avoid, f.Lookup("github.com/hibiken/asynq", ""))
+
+	checks := []struct{ name, got, want string }{
+		{"block, pending entry", block, "- river (backend), pending RFC-0005"},
+		{"block, one candidate", block, "- ulid: not chosen; the only candidate so far is github.com/oklog/ulid/v2"},
+		{"block, no candidates", block, "- config: nothing chosen and no candidates yet. Which library reads the environment?"},
+		{"block, pending avoid", block, "- asynq: use river instead. A second datastore. (pending RFC-0005)"},
+		{"explain, version records", explain.String(), "    Version set by: RFC-0003"},
+		{"explain, pending", explain.String(), "    Pending: RFC-0005, not accepted yet. Follow it, but it may still change."},
+		{"answer, pending adopt", answer.String(), "Pending: RFC-0005, not accepted yet."},
+		{"answer, pending avoid", avoid.String(), "Pending: RFC-0005, not accepted yet."},
+	}
+	for _, c := range checks {
+		if !strings.Contains(c.got, c.want) {
+			t.Errorf("%s: lacks %q\n%s", c.name, c.want, c.got)
+		}
+	}
+}
+
+func TestCandidates(t *testing.T) {
+	cases := map[string][]string{
+		"nothing chosen and no candidates yet":       nil,
+		"not chosen; the only candidate so far is a": {"a"},
+		"a or b":    {"a", "b"},
+		"a, b or c": {"a", "b", "c"},
+	}
+	for want, cs := range cases {
+		if got := candidates(cs); got != want {
+			t.Errorf("candidates(%v) = %q, want %q", cs, got, want)
+		}
+	}
+}

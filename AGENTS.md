@@ -88,6 +88,8 @@ rendering twice gives the same file.
   numbers in it, so append rather than insert.
 - `testdata/broken.yml`: fails the YAML and schema passes.
 - `testdata/semantic.yml`: passes the schema, fails semantics.
+- `testdata/basis.yml`: valid; a pending basis, `version_decided_by`, and
+  proposals with one candidate and with none.
 - `stackfile.yml` at the root is ours, and must stay clean under `--strict`.
 
 <!-- stackfile:start: generated from stackfile.yml by 'stackfile render'; edit that file, not this block -->

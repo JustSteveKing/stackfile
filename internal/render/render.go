@@ -63,8 +63,9 @@ func Explain(w io.Writer, f *stack.File, rel string, isDir bool) {
 			if e.Docs != "" {
 				fmt.Fprintf(w, "    Docs: %s\n", e.Docs)
 			}
-			if len(e.DecidedBy) > 0 {
-				fmt.Fprintf(w, "    Decided by: %s\n", strings.Join(e.DecidedBy, ", "))
+			records(w, "    ", e.DecidedBy, e.PendingOn)
+			if len(e.VersionDecidedBy) > 0 {
+				fmt.Fprintf(w, "    Version set by: %s\n", strings.Join(e.VersionDecidedBy, ", "))
 			}
 		}
 	}
@@ -72,7 +73,7 @@ func Explain(w io.Writer, f *stack.File, rel string, isDir bool) {
 	if len(undecided) > 0 {
 		fmt.Fprintln(w, "\nUndecided: ask the user before choosing any of these")
 		for _, e := range undecided {
-			fmt.Fprintf(w, "  %s: %s\n", e.Name, strings.Join(e.Candidates, " or "))
+			fmt.Fprintf(w, "  %s: %s\n", e.Name, candidates(e.Candidates))
 			if e.Open != "" {
 				fmt.Fprintf(w, "    Open question: %s\n", e.Open)
 			}
@@ -146,6 +147,7 @@ func Answer(w io.Writer, a stack.Answer) {
 		for _, r := range e.Rules {
 			fmt.Fprintf(w, "- %s\n", r)
 		}
+		records(w, "", nil, e.PendingOn)
 	case stack.VerdictTrial:
 		fmt.Fprintf(w, "Allowed on trial: %s may be used only within %s.\n", a.Package, scopeText(*e))
 		fmt.Fprintln(w, "Do not use it outside that scope. If you need it elsewhere, ask the user.")
@@ -167,11 +169,11 @@ func Answer(w io.Writer, a stack.Answer) {
 		if e.ReplacedBy != "" {
 			fmt.Fprintf(w, "Use %s instead.\n", e.ReplacedBy)
 		}
-		reason(w, e.Why, e.DecidedBy)
+		reason(w, e.Why, e.DecidedBy, e.PendingOn)
 		tellUser(w)
 	case stack.VerdictRetired:
 		fmt.Fprintf(w, "Not allowed: %s is retired and being removed. Use %s instead.\n", a.Package, e.ReplacedBy)
-		reason(w, e.Why, e.DecidedBy)
+		reason(w, e.Why, e.DecidedBy, e.PendingOn)
 		tellUser(w)
 	case stack.VerdictAvoid:
 		fmt.Fprintf(w, "Not allowed: %s is on the avoid list.", a.Package)
@@ -179,7 +181,7 @@ func Answer(w io.Writer, a stack.Answer) {
 			fmt.Fprintf(w, " Use %s instead.", av.UseInstead)
 		}
 		fmt.Fprintln(w)
-		reason(w, av.Why, av.DecidedBy)
+		reason(w, av.Why, av.DecidedBy, av.PendingOn)
 		tellUser(w)
 	case stack.VerdictUndeclared:
 		fmt.Fprintf(w, "Undeclared: %s is not in %s, which neither allows nor forbids it.\n", a.Package, stack.FileName)
@@ -188,13 +190,50 @@ func Answer(w io.Writer, a stack.Answer) {
 	}
 }
 
-func reason(w io.Writer, why string, decidedBy []string) {
+func reason(w io.Writer, why string, decidedBy, pendingOn []string) {
 	if why != "" {
 		fmt.Fprintf(w, "Why: %s\n", why)
 	}
+	records(w, "", decidedBy, pendingOn)
+}
+
+// records says which decisions stand behind an entry. A pending one is
+// followed like any other, but an agent should know it may still change.
+func records(w io.Writer, indent string, decidedBy, pendingOn []string) {
 	if len(decidedBy) > 0 {
-		fmt.Fprintf(w, "Decided by: %s\n", strings.Join(decidedBy, ", "))
+		fmt.Fprintf(w, "%sDecided by: %s\n", indent, strings.Join(decidedBy, ", "))
 	}
+	if len(pendingOn) > 0 {
+		fmt.Fprintf(w, "%sPending: %s, not accepted yet. Follow it, but it may still change.\n", indent, strings.Join(pendingOn, ", "))
+	}
+}
+
+// candidates words a proposal's options. One candidate is not a choice
+// between two, and none means only the question is known.
+func candidates(cs []string) string {
+	switch len(cs) {
+	case 0:
+		return "nothing chosen and no candidates yet"
+	case 1:
+		return "not chosen; the only candidate so far is " + cs[0]
+	}
+	return strings.Join(cs[:len(cs)-1], ", ") + " or " + cs[len(cs)-1]
+}
+
+// recordsSuffix is records for a one-line summary: (ADR-0015) or
+// (pending RFC-0005).
+func recordsSuffix(decidedBy, pendingOn []string) string {
+	var parts []string
+	if len(decidedBy) > 0 {
+		parts = append(parts, strings.Join(decidedBy, ", "))
+	}
+	if len(pendingOn) > 0 {
+		parts = append(parts, "pending "+strings.Join(pendingOn, ", "))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return " (" + strings.Join(parts, "; ") + ")"
 }
 
 // tellUser closes every refusal. Without it an agent treats a block as an
@@ -233,9 +272,7 @@ func stopLine(e stack.Entry) string {
 	if e.Why != "" {
 		fmt.Fprintf(&b, " %s", e.Why)
 	}
-	if len(e.DecidedBy) > 0 {
-		fmt.Fprintf(&b, " (%s)", strings.Join(e.DecidedBy, ", "))
-	}
+	b.WriteString(recordsSuffix(e.DecidedBy, e.PendingOn))
 	return b.String()
 }
 
@@ -248,9 +285,7 @@ func avoidLine(a stack.Avoid) string {
 	if a.Why != "" {
 		fmt.Fprintf(&b, " %s", a.Why)
 	}
-	if len(a.DecidedBy) > 0 {
-		fmt.Fprintf(&b, " (%s)", strings.Join(a.DecidedBy, ", "))
-	}
+	b.WriteString(recordsSuffix(a.DecidedBy, a.PendingOn))
 	return b.String()
 }
 

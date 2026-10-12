@@ -223,9 +223,11 @@ func checkSchema(root *yaml.Node, already Diagnostics) Diagnostics {
 // combination with something else, which "missing property" leaves a reader
 // to work out from the schema.
 var requiredBecause = map[string]string{
-	"candidates":  "a proposed entry needs candidates: the options still being considered",
+	"candidates":  "a proposed entry needs candidates, an open question, or both",
+	"open":        "a proposed entry needs candidates, an open question, or both",
 	"replaced_by": "a retired entry needs replaced_by: the entry to use instead",
-	"decided_by":  "basis: ratified needs decided_by: the ADRs or RFCs behind it",
+	"decided_by":  "basis: ratified needs decided_by: the accepted ADRs or RFCs behind it",
+	"pending_on":  "basis: pending needs pending_on: the RFCs or ADRs, not yet accepted, that will decide it",
 }
 
 // schemaMessage rewords the failures people hit most into what to do about
@@ -235,7 +237,10 @@ func schemaMessage(k jsonschema.ErrorKind, p *message.Printer) string {
 	case *kind.AdditionalProperties:
 		return fmt.Sprintf("unknown field %s; check the spelling, or prefix a custom field with x-", quoteAll(k.Properties))
 	case *kind.DependentRequired:
-		return fmt.Sprintf("%s needs %s too; ecosystem and package go together, so give both or neither", k.Prop, quoteAll(k.Missing))
+		if k.Prop == "ecosystem" || k.Prop == "package" {
+			return fmt.Sprintf("%s needs %s too; ecosystem and package go together, so give both or neither", k.Prop, quoteAll(k.Missing))
+		}
+		return fmt.Sprintf("%s needs %s too", k.Prop, quoteAll(k.Missing))
 	case *kind.MaxLength:
 		return fmt.Sprintf("%d characters, and the limit is %d; keep it to one sentence and move the detail to a docs page", k.Got, k.Want)
 	case *kind.Required:
